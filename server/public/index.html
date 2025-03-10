@@ -3,53 +3,100 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>CoEdit Server</title>
-		<style>
-			@font-face {
-				font-family: "Mars";
-				src: url("/fonts/Mars.ttf") format("truetype");
-			}
-			:root {
-				--midnight-blue: #1b1029;
-			}
-			body {
-				font-family: Arial, sans-serif;
-				margin: 0;
-				padding: 0;
-				background-color: var(--midnight-blue);
-				background-image: radial-gradient(circle, #140c1c 20%, #1b1029 50%, #000 90%);
-				color: #f5f5f5;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				height: 100vh;
-				text-align: center;
-			}
-			.heading {
-				font-family: "Mars", sans-serif;
-				-webkit-text-fill-color: transparent;
-				background-image: linear-gradient(90deg, #f5826f, #fb928c 0%, #e3b9f2);
-				-webkit-background-clip: text;
-				background-clip: text;
-				font-size: 2rem;
-				font-weight: bold;
-				margin-bottom: 1rem;
-			}
-			p {
-				color: #f5f5f5;
-				margin-bottom: 1rem;
-			}
-			.status {
-				color: #98dea3;
-				font-weight: bold;
-			}
-		</style>
+		<title>Socket.IO Test</title>
+		<link rel="stylesheet" href="styles.css" />
+		<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 	</head>
 	<body>
-		<div class="container">
-			<h1 class="heading">API is running smoothly!</h1>
-			<p>Welcome to CoEdit Server. Everything is set up and ready to go!</p>
-			<p class="status">Server Status: ✅ Online</p>
-		</div>
+		<h2>Socket.IO Client Test</h2>
+		<button onclick="joinRoom()">Join Room</button>
+		<button onclick="sendMessage()">Send Message</button>
+		<button onclick="disconnect()">Disconnect</button>
+		<button onclick="createFile()">Create File</button>
+		<button onclick="updateFile()">Update File</button>
+		<button onclick="renameFile()">Rename File</button>
+		<button onclick="deleteFile()">Delete File</button>
+
+		<script>
+			const socket = io("http://localhost:3000");
+
+			function joinRoom() {
+				const username = prompt("Enter your username:");
+				const roomId = prompt("Enter room ID:");
+				socket.emit("join-request", { username, roomId });
+			}
+
+			function sendMessage() {
+				const message = prompt("Enter a message:");
+				socket.emit("send-message", { message });
+			}
+
+			function disconnect() {
+				socket.disconnect();
+				alert("Disconnected from server!");
+			}
+
+			function createFile() {
+				const parentDirId = prompt("Enter Parent Directory ID:");
+				const newFile = { id: Date.now().toString(), name: "newfile.txt", content: "" };
+				socket.emit("file-created", { parentDirId, newFile });
+			}
+
+			function updateFile() {
+				const fileId = prompt("Enter File ID:");
+				const newContent = prompt("Enter new file content:");
+				socket.emit("file-updated", { fileId, newContent });
+			}
+
+			function renameFile() {
+				const fileId = prompt("Enter File ID:");
+				const newName = prompt("Enter new file name:");
+				socket.emit("file-renamed", { fileId, newName });
+			}
+
+			function deleteFile() {
+				const fileId = prompt("Enter File ID:");
+				socket.emit("file-deleted", { fileId });
+			}
+
+			socket.on("join-accepted", (data) => {
+				console.log("Join Accepted:", data);
+				alert(`Welcome ${data.user.username}! Users in Room: ${data.users.length}`);
+			});
+
+			socket.on("receive-message", (data) => {
+				console.log("New Message:", data.message);
+				alert(`New Message: ${data.message}`);
+			});
+
+			socket.on("user-disconnected", (data) => {
+				console.log("User Disconnected:", data);
+				alert(`${data.user.username} has left the room.`);
+			});
+
+			socket.on("username-exists", () => {
+				alert("Username already exists. Try a different one.");
+			});
+
+			socket.on("file-created", (data) => {
+				console.log("File Created:", data);
+				alert(`New File Created: ${data.newFile.name}`);
+			});
+
+			socket.on("file-updated", (data) => {
+				console.log("File Updated:", data);
+				alert(`File Updated: ${data.fileId}`);
+			});
+
+			socket.on("file-renamed", (data) => {
+				console.log("File Renamed:", data);
+				alert(`File Renamed: ${data.newName}`);
+			});
+
+			socket.on("file-deleted", (data) => {
+				console.log("File Deleted:", data);
+				alert(`File Deleted: ${data.fileId}`);
+			});
+		</script>
 	</body>
 </html>
