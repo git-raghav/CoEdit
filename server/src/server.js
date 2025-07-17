@@ -164,6 +164,38 @@ io.on("connection", (socket) => {
 		if (!roomId) return;
 		socket.broadcast.to(roomId).emit(SocketEvent.DRAWING_UPDATE, { snapshot });
 	});
+    // Voice channel events
+    let voiceUserMap = [];
+
+	socket.on(SocketEvent.VOICE_JOIN, ({ username }) => {
+		const roomId = getRoomId(socket.id);
+		if (!roomId) return;
+
+		socket.join(roomId);
+		socket.broadcast.to(roomId).emit(SocketEvent.VOICE_JOIN, { username });
+	});
+
+	socket.on(SocketEvent.VOICE_LEAVE, ({ username }) => {
+		const roomId = getRoomId(socket.id);
+		if (!roomId) return;
+
+		socket.leave(roomId);
+		socket.broadcast.to(roomId).emit(SocketEvent.VOICE_LEAVE, { username });
+	});
+
+	socket.on(SocketEvent.VOICE_MUTE, ({ username, isMuted }) => {
+		const roomId = getRoomId(socket.id);
+		if (!roomId) return;
+
+		socket.broadcast.to(roomId).emit(SocketEvent.VOICE_MUTE, { username, isMuted });
+	});
+
+	socket.on(SocketEvent.VOICE_STREAM, ({ username, stream }) => {
+		const roomId = getRoomId(socket.id);
+		if (!roomId) return;
+
+		socket.broadcast.to(roomId).emit(SocketEvent.VOICE_STREAM, { username, stream });
+	});
 });
 
 const PORT = process.env.PORT || 3000;

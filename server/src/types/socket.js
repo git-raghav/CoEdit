@@ -22,6 +22,10 @@ const SocketEvent = {
 	REQUEST_DRAWING: "request-drawing",
 	SYNC_DRAWING: "sync-drawing",
 	DRAWING_UPDATE: "drawing-update",
+    VOICE_JOIN: "voice-join",
+	VOICE_LEAVE: "voice-leave",
+	VOICE_MUTE: "voice-mute",
+	VOICE_STREAM: "voice-stream",
 };
 
 module.exports = { SocketEvent };
