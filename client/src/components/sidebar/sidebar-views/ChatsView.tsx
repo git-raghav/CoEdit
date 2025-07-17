@@ -7,7 +7,7 @@ const ChatsView = () => {
 
     return (
         <div
-            className="flex max-h-full min-h-[400px] w-full flex-col gap-2 p-2"
+            className="flex max-h-full min-h-[400px] w-full flex-col gap-2 p-3"
             style={{ height: viewHeight }}
         >
             <h1 className="view-title text-base">Group Chat</h1>

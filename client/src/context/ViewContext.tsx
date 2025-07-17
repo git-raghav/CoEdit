@@ -4,14 +4,11 @@ import FilesView from "@/components/sidebar/sidebar-views/FilesView"
 import RunView from "@/components/sidebar/sidebar-views/RunView"
 import SettingsView from "@/components/sidebar/sidebar-views/SettingsView"
 import UsersView from "@/components/sidebar/sidebar-views/UsersView"
-import VoiceChannel from "@/components/voice/VoiceChannel"
+import VoiceChannel from "@/components/sidebar/sidebar-views/VoiceChannel"
 import useWindowDimensions from "@/hooks/useWindowDimensions"
 import { VIEWS, ViewContext as ViewContextType } from "@/types/view"
 import { ReactNode, createContext, useContext, useState } from "react"
-import { IoSettingsOutline } from "react-icons/io5"
-import { LuFiles, LuSparkles } from "react-icons/lu"
-import { PiChats, PiPlay, PiUsers } from "react-icons/pi"
-import { Mic } from "lucide-react"
+import { Mic, Files, Users, Settings, MessagesSquare, Play, BotMessageSquare } from "lucide-react"
 
 const ViewContext = createContext<ViewContextType | null>(null)
 
@@ -37,13 +34,13 @@ function ViewContextProvider({ children }: { children: ReactNode }) {
         [VIEWS.VOICE]: <VoiceChannel />,
     })
     const [viewIcons] = useState({
-        [VIEWS.FILES]: <LuFiles size={28} />,
-        [VIEWS.CLIENTS]: <PiUsers size={30} />,
-        [VIEWS.SETTINGS]: <IoSettingsOutline size={28} />,
-        [VIEWS.CHATS]: <PiChats size={30} />,
-        [VIEWS.COPILOT]: <LuSparkles size={28} />,
-        [VIEWS.RUN]: <PiPlay size={28} />,
-        [VIEWS.VOICE]: <Mic size={28} />,
+        [VIEWS.FILES]: <Files size={25} />,
+        [VIEWS.CLIENTS]: <Users size={25} />,
+        [VIEWS.SETTINGS]: <Settings size={25} />,
+        [VIEWS.CHATS]: <MessagesSquare size={25} />,
+        [VIEWS.COPILOT]: <BotMessageSquare size={25} />,
+        [VIEWS.RUN]: <Play size={25} />,
+        [VIEWS.VOICE]: <Mic size={25} />,
     })
 
     return (

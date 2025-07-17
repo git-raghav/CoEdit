@@ -8,7 +8,7 @@ function Footer() {
                     className="text-statuspurple underline underline-offset-1"
                     target="_blank"
                 >
-                    ***
+                    Team
                 </a>
             </span>
             <div className="group relative">

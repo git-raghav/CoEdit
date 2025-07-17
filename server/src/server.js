@@ -165,6 +165,8 @@ io.on("connection", (socket) => {
 		socket.broadcast.to(roomId).emit(SocketEvent.DRAWING_UPDATE, { snapshot });
 	});
     // Voice channel events
+    let voiceUserMap = [];
+
 	socket.on(SocketEvent.VOICE_JOIN, ({ username }) => {
 		const roomId = getRoomId(socket.id);
 		if (!roomId) return;

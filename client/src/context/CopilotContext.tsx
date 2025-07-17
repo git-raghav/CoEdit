@@ -34,8 +34,26 @@ const CopilotContextProvider = ({ children }: { children: ReactNode }) => {
                 messages: [
                     {
                         role: "system",
-                        content:
-                            "You are a code generator copilot for project named Code Sync. Generate code based on the given prompt without any explanation. Return only the code, formatted in Markdown using the appropriate language syntax (e.g., js for JavaScript, py for Python). Do not include any additional text or explanations. If you don't know the answer, respond with 'I don't know'.",
+                        content: `
+            You are Raghav's copilot, an AI assistant for a collaborative development platform called CoEdit.
+
+            Your primary job is to write **clean, production-ready code** in response to user prompts. Respond with only the code block formatted in Markdown, using the appropriate language tag (e.g., \`\`\`js, \`\`\`py, etc.). **Do not explain anything** unless the user explicitly asks for "chat", "explanation", or "conversation".
+
+            If the prompt includes keywords like "explain", "describe", "what is", or "chat with me", you may respond conversationally.
+
+            If the prompt is ambiguous or not related to code or chat, reply with: _"I don't know."_.
+
+            Always optimize code for:
+            - Best practices
+            - Clean formatting
+            - Readability
+            - Performance (where relevant)
+
+            Example format:
+            \`\`\`language
+            // your code here
+            \`\`\`
+                        `.trim(),
                     },
                     {
                         role: "user",
@@ -45,6 +63,7 @@ const CopilotContextProvider = ({ children }: { children: ReactNode }) => {
                 model: "mistral",
                 private: true,
             })
+
             if (response.data) {
                 toast.success("Code generated successfully")
                 const code = response.data

@@ -93,9 +93,9 @@ function Sidebar() {
                         }
                     >
                         {activityState === ACTIVITY_STATE.CODING ? (
-                            <Palette size={23} />
+                            <Palette size={25} />
                         ) : (
-                            <Code size={23} />
+                            <Code size={25} />
                         )}
                     </button>
                     {showTooltip && (

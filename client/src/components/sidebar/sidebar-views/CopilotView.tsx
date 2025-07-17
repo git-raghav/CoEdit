@@ -4,10 +4,10 @@ import { useSocket } from "@/context/SocketContext"
 import useResponsive from "@/hooks/useResponsive"
 import { SocketEvent } from "@/types/socket"
 import toast from "react-hot-toast"
-import { LuClipboardPaste, LuCopy, LuRepeat } from "react-icons/lu"
 import ReactMarkdown from "react-markdown"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { dracula } from "react-syntax-highlighter/dist/esm/styles/prism"
+import { Rocket, Copy, Repeat, ClipboardPaste } from 'lucide-react';
 
 function CopilotView() {
     const {socket} = useSocket()
@@ -65,26 +65,27 @@ function CopilotView() {
 
     return (
         <div
-            className="flex max-h-full min-h-[400px] w-full flex-col gap-2 p-4"
+            className="flex max-h-full min-h-[400px] w-full flex-col gap-2 p-3"
             style={{ height: viewHeight }}
         >
-            <h1 className="view-title">Copilot</h1>
+            <h1 className="view-title text-base">Copilot</h1>
             <textarea
-                className="min-h-[120px] w-full rounded-md border-none bg-darkHover p-2 text-white outline-none"
-                placeholder="What code do you want to generate?"
+                className="min-h-[120px] w-full rounded-md border-none bg-dark p-2 text-white outline-none text-sm"
+                placeholder="Type a prompt like 'Create a Node.js server' or 'Explain recursion'"
                 onChange={(e) => setInput(e.target.value)}
             />
             <button
-                className="mt-1 flex w-full justify-center rounded-md bg-primary p-2 font-bold text-black outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-1 flex w-full justify-center gap-1 rounded-xl bg-statuspurple p-2 text-black font-medium outline-none disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={generateCode}
                 disabled={isRunning}
             >
+                <Rocket size={18} strokeWidth={1.75}/>
                 {isRunning ? "Generating..." : "Generate Code"}
             </button>
             {output && (
                 <div className="flex justify-end gap-4 pt-2">
                     <button title="Copy Output" onClick={copyOutput}>
-                        <LuCopy
+                        <Copy
                             size={18}
                             className="cursor-pointer text-white"
                         />
@@ -93,7 +94,7 @@ function CopilotView() {
                         title="Replace code in file"
                         onClick={replaceCodeInFile}
                     >
-                        <LuRepeat
+                        <Repeat
                             size={18}
                             className="cursor-pointer text-white"
                         />
@@ -102,7 +103,7 @@ function CopilotView() {
                         title="Paste code in file"
                         onClick={pasteCodeInFile}
                     >
-                        <LuClipboardPaste
+                        <ClipboardPaste
                             size={18}
                             className="cursor-pointer text-white"
                         />

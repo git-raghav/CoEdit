@@ -3,6 +3,7 @@ import { Mic, MicOff, Phone, PhoneOff, Users } from "lucide-react"
 import { useAppContext } from "@/context/AppContext"
 import { useSocket } from "@/context/SocketContext"
 import { SocketEvent } from "@/types/socket"
+import useResponsive from "@/hooks/useResponsive"
 
 interface VoiceUser {
     username: string
@@ -19,6 +20,7 @@ const VoiceChannel = () => {
     const localStreamRef = useRef<MediaStream | null>(null)
     const { currentUser } = useAppContext()
     const { socket } = useSocket()
+    const { viewHeight } = useResponsive()
 
     useEffect(() => {
         // Handle incoming voice streams
@@ -116,7 +118,7 @@ const VoiceChannel = () => {
     }
 
     return (
-        <div className="flex h-full flex-col bg-dark2 p-4">
+        <div className="flex h-full flex-col bg-dark2 p-4" style={{ height: viewHeight }}>
             <div className="mb-4 flex items-center justify-between">
                 <h2 className="flex items-center gap-2 text-xl font-semibold">
                     <Users className="h-5 w-5" />
