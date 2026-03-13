@@ -98,7 +98,7 @@ const FormComponent = () => {
     return (
         <div className="flex w-full max-w-[500px] flex-col items-center justify-center gap-4 p-4 sm:w-[500px] sm:p-8">
             <h2 className="mb-5 bg-text-gradient bg-clip-text font-mars text-3xl font-bold text-transparent">
-                CoEdit
+                CodeRoom
             </h2>
             <form onSubmit={joinRoom} className="flex w-full flex-col gap-4">
                 <div className="flex w-full items-center rounded-lg border border-white/10 bg-[#09090b] px-2 py-2 text-[15px] text-white/60 transition-all duration-150 ease-in-out focus-within:ring-2 focus-within:ring-gray-700 focus-within:ring-offset-2 focus-within:ring-offset-[#09090b]">
