@@ -306,15 +306,16 @@ io.on("connection", (socket) => {
 		if (!roomId) return;
 		socket.broadcast.to(roomId).emit(SocketEvent.DRAWING_UPDATE, { snapshot });
 	});
-    // Voice channel events
-    let voiceUserMap = [];
-
+    // Voice channel events (signaling + presence)
 	socket.on(SocketEvent.VOICE_JOIN, ({ username }) => {
 		const roomId = getRoomId(socket.id);
 		if (!roomId) return;
 
 		socket.join(roomId);
-		socket.broadcast.to(roomId).emit(SocketEvent.VOICE_JOIN, { username });
+		socket.broadcast.to(roomId).emit(SocketEvent.VOICE_JOIN, {
+			username,
+			socketId: socket.id,
+		});
 	});
 
 	socket.on(SocketEvent.VOICE_LEAVE, ({ username }) => {
@@ -322,21 +323,37 @@ io.on("connection", (socket) => {
 		if (!roomId) return;
 
 		socket.leave(roomId);
-		socket.broadcast.to(roomId).emit(SocketEvent.VOICE_LEAVE, { username });
+		socket.broadcast.to(roomId).emit(SocketEvent.VOICE_LEAVE, {
+			username,
+			socketId: socket.id,
+		});
 	});
 
 	socket.on(SocketEvent.VOICE_MUTE, ({ username, isMuted }) => {
 		const roomId = getRoomId(socket.id);
 		if (!roomId) return;
 
-		socket.broadcast.to(roomId).emit(SocketEvent.VOICE_MUTE, { username, isMuted });
+		socket.broadcast.to(roomId).emit(SocketEvent.VOICE_MUTE, {
+			username,
+			isMuted,
+			socketId: socket.id,
+		});
 	});
 
-	socket.on(SocketEvent.VOICE_STREAM, ({ username, stream }) => {
-		const roomId = getRoomId(socket.id);
-		if (!roomId) return;
+	// WebRTC signaling events for voice (audio only)
+	socket.on(SocketEvent.VOICE_OFFER, ({ to, from, sdp }) => {
+		if (!to || !from || !sdp) return;
+		io.to(to).emit(SocketEvent.VOICE_OFFER, { from, sdp });
+	});
 
-		socket.broadcast.to(roomId).emit(SocketEvent.VOICE_STREAM, { username, stream });
+	socket.on(SocketEvent.VOICE_ANSWER, ({ to, from, sdp }) => {
+		if (!to || !from || !sdp) return;
+		io.to(to).emit(SocketEvent.VOICE_ANSWER, { from, sdp });
+	});
+
+	socket.on(SocketEvent.VOICE_ICE_CANDIDATE, ({ to, from, candidate }) => {
+		if (!to || !from || !candidate) return;
+		io.to(to).emit(SocketEvent.VOICE_ICE_CANDIDATE, { from, candidate });
 	});
 });
 

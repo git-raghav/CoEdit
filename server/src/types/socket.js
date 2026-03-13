@@ -30,6 +30,9 @@ const SocketEvent = {
 	VOICE_LEAVE: "voice-leave",
 	VOICE_MUTE: "voice-mute",
 	VOICE_STREAM: "voice-stream",
+	VOICE_OFFER: "voice-offer",
+	VOICE_ANSWER: "voice-answer",
+	VOICE_ICE_CANDIDATE: "voice-ice-candidate",
 };
 
 module.exports = { SocketEvent };

@@ -30,10 +30,13 @@ enum SocketEvent {
     REQUEST_DRAWING = "request-drawing",
     SYNC_DRAWING = "sync-drawing",
     DRAWING_UPDATE = "drawing-update",
-    VOICE_JOIN = "VOICE_JOIN",
-    VOICE_LEAVE = "VOICE_LEAVE",
-    VOICE_MUTE = "VOICE_MUTE",
-    VOICE_STREAM = "VOICE_STREAM",
+    VOICE_JOIN = "voice-join",
+    VOICE_LEAVE = "voice-leave",
+    VOICE_MUTE = "voice-mute",
+    VOICE_STREAM = "voice-stream",
+    VOICE_OFFER = "voice-offer",
+    VOICE_ANSWER = "voice-answer",
+    VOICE_ICE_CANDIDATE = "voice-ice-candidate",
 }
 
 interface SocketContext {
