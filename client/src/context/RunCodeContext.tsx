@@ -84,6 +84,7 @@ const RunCodeContextProvider = ({ children }: { children: ReactNode }) => {
                 files: [{ name: activeFile.name, content: activeFile.content }],
                 stdin: input,
             })
+            console.log(response.data)
             if (response.data.run.stderr) {
                 setOutput(response.data.run.stderr)
             } else {

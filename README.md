@@ -1,14 +1,14 @@
-# 🚀 CoEdit
+# 🚀 CodeRoom
 
 **Code, Sync, Collaborate — All in Real Time!**
 
-> **⚠️ Work in Progress: CoEdit is under active development. Features and UI are evolving rapidly!**
+> **⚠️ Work in Progress: CodeRoom is under active development. Features and UI are evolving rapidly!**
 
 ---
 
-## ✨ What is CoEdit?
+## ✨ What is CodeRoom?
 
-CoEdit is a next-generation collaborative coding platform that empowers teams to code, chat, draw, and run code together — all in your browser. Whether you're pair programming, teaching, or brainstorming, CoEdit brings your team together in a seamless, interactive workspace.
+CodeRoom is a next-generation collaborative coding platform that empowers teams to code, chat, draw, and run code together — all in your browser. Whether you're pair programming, teaching, or brainstorming, CodeRoom brings your team together in a seamless, interactive workspace.
 
 ---
 
@@ -54,8 +54,8 @@ CoEdit is a next-generation collaborative coding platform that empowers teams to
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/git-raghav/CoEdit.git
-cd CoEdit
+git clone https://github.com/git-raghav/CodeRoom.git
+cd CodeRoom
 ```
 
 ### 2. Start the Server
