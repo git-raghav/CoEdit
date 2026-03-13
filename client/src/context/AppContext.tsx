@@ -29,6 +29,10 @@ function AppContextProvider({ children }: { children: ReactNode }) {
         ACTIVITY_STATE.CODING,
     )
     const [drawingData, setDrawingData] = useState<DrawingData>(null)
+    const [isOwner, setIsOwner] = useState<boolean>(false)
+    const [pendingUsers, setPendingUsers] = useState<
+        { socketId: string; username: string; roomId: string }[]
+    >([])
 
     return (
         <AppContext.Provider
@@ -43,6 +47,10 @@ function AppContextProvider({ children }: { children: ReactNode }) {
                 setActivityState,
                 drawingData,
                 setDrawingData,
+                isOwner,
+                setIsOwner,
+                pendingUsers,
+                setPendingUsers,
             }}
         >
             {children}

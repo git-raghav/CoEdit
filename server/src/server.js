@@ -30,6 +30,10 @@ const io = new Server(server, {
 
 //Store all users and their details
 let userSocketMap = [];
+//Store room owners
+let roomOwners = {};
+//Store pending join requests per room
+let pendingJoins = {};
 
 // Function to get all users in a room or active users
 function getUsersInRoom(roomId) {
@@ -59,38 +63,176 @@ function getUserBySocketId(socketId) {
 //Socket.io event handlers
 io.on("connection", (socket) => {
 	socket.on(SocketEvent.JOIN_REQUEST, ({ roomId, username }) => {
-		const isUsernameExist = getUsersInRoom(roomId).some((u) => u.username === username);
+		const existingUsers = getUsersInRoom(roomId);
+
+		// Check if username already exists among active users in the room
+		const isUsernameExist = existingUsers.some((u) => u.username === username);
 
 		if (isUsernameExist) {
 			io.to(socket.id).emit(SocketEvent.USERNAME_EXISTS);
 			return;
 		}
-		//update user details if username is unique
-		const user = {
+
+		// If this is the first user in the room, auto-accept and set as owner
+		if (existingUsers.length === 0) {
+			const user = {
+				username,
+				roomId,
+				status: USER_CONNECTION_STATUS.ONLINE,
+				cursorPosition: 0,
+				typing: false,
+				socketId: socket.id,
+				currentFile: null,
+			};
+
+			userSocketMap.push(user);
+			socket.join(roomId);
+			roomOwners[roomId] = socket.id;
+			socket.broadcast.to(roomId).emit(SocketEvent.USER_JOINED, { user });
+
+			const users = getUsersInRoom(roomId);
+			io.to(socket.id).emit(SocketEvent.JOIN_ACCEPTED, { user, users });
+			return;
+		}
+
+		// For subsequent users, create a pending join request to be approved by the room owner
+		if (!pendingJoins[roomId]) {
+			pendingJoins[roomId] = [];
+		}
+
+		// Prevent duplicate pending requests with the same username in this room
+		const isUsernamePending = pendingJoins[roomId].some(
+			(pending) => pending.username === username,
+		);
+
+		if (isUsernamePending) {
+			io.to(socket.id).emit(SocketEvent.USERNAME_EXISTS);
+			return;
+		}
+
+		const pendingUser = {
 			username,
 			roomId,
+			socketId: socket.id,
+		};
+
+		pendingJoins[roomId].push(pendingUser);
+
+		const ownerSocketId = roomOwners[roomId] || (existingUsers[0] && existingUsers[0].socketId);
+		if (ownerSocketId) {
+			roomOwners[roomId] = ownerSocketId;
+			io.to(ownerSocketId).emit(SocketEvent.JOIN_PENDING, {
+				socketId: pendingUser.socketId,
+				username: pendingUser.username,
+				roomId: pendingUser.roomId,
+			});
+		}
+	});
+
+	socket.on(SocketEvent.JOIN_APPROVE, ({ socketId }) => {
+		// Find the pending user and associated room
+		let targetRoomId = null;
+		let pendingUser = null;
+
+		for (const roomId of Object.keys(pendingJoins)) {
+			const index = pendingJoins[roomId].findIndex(
+				(pending) => pending.socketId === socketId,
+			);
+			if (index !== -1) {
+				targetRoomId = roomId;
+				[pendingUser] = pendingJoins[roomId].splice(index, 1);
+				if (pendingJoins[roomId].length === 0) {
+					delete pendingJoins[roomId];
+				}
+				break;
+			}
+		}
+
+		if (!pendingUser || !targetRoomId) {
+			return;
+		}
+
+		// Only the room owner can approve
+		if (roomOwners[targetRoomId] !== socket.id) {
+			return;
+		}
+
+		const targetSocket = io.sockets.sockets.get(pendingUser.socketId);
+		if (!targetSocket) {
+			return;
+		}
+
+		const user = {
+			username: pendingUser.username,
+			roomId: targetRoomId,
 			status: USER_CONNECTION_STATUS.ONLINE,
 			cursorPosition: 0,
 			typing: false,
-			socketId: socket.id,
+			socketId: pendingUser.socketId,
 			currentFile: null,
 		};
 
 		userSocketMap.push(user);
-		socket.join(roomId);
-		socket.broadcast.to(roomId).emit(SocketEvent.USER_JOINED, { user });
+		targetSocket.join(targetRoomId);
+		targetSocket.broadcast.to(targetRoomId).emit(SocketEvent.USER_JOINED, { user });
 
-		const users = getUsersInRoom(roomId);
-		io.to(socket.id).emit(SocketEvent.JOIN_ACCEPTED, { user, users });
+		const users = getUsersInRoom(targetRoomId);
+		io.to(pendingUser.socketId).emit(SocketEvent.JOIN_ACCEPTED, { user, users });
+	});
+
+	socket.on(SocketEvent.JOIN_REJECT, ({ socketId }) => {
+		// Find the pending user and associated room
+		let targetRoomId = null;
+		let pendingUser = null;
+
+		for (const roomId of Object.keys(pendingJoins)) {
+			const index = pendingJoins[roomId].findIndex(
+				(pending) => pending.socketId === socketId,
+			);
+			if (index !== -1) {
+				targetRoomId = roomId;
+				[pendingUser] = pendingJoins[roomId].splice(index, 1);
+				if (pendingJoins[roomId].length === 0) {
+					delete pendingJoins[roomId];
+				}
+				break;
+			}
+		}
+
+		if (!pendingUser || !targetRoomId) {
+			return;
+		}
+
+		// Only the room owner can reject
+		if (roomOwners[targetRoomId] !== socket.id) {
+			return;
+		}
+
+		io.to(pendingUser.socketId).emit(SocketEvent.JOIN_REJECTED, {
+			reason: "Room owner rejected the join request.",
+		});
 	});
 
 	//When a user is about to disconnect
 	socket.on("disconnecting", () => {
 		const user = getUserBySocketId(socket.id);
-		if (!user) return;
-		socket.broadcast.to(user.roomId).emit(SocketEvent.USER_DISCONNECTED, { user });
-		userSocketMap = userSocketMap.filter((u) => u.socketId !== socket.id);
-		socket.leave(user.roomId);
+		if (user) {
+			socket.broadcast.to(user.roomId).emit(SocketEvent.USER_DISCONNECTED, { user });
+			userSocketMap = userSocketMap.filter((u) => u.socketId !== socket.id);
+			socket.leave(user.roomId);
+		}
+
+		// Clean up any pending join requests for this socket
+		for (const roomId of Object.keys(pendingJoins)) {
+			const remaining = pendingJoins[roomId].filter(
+				(pending) => pending.socketId !== socket.id,
+			);
+			if (remaining.length === 0) {
+				delete pendingJoins[roomId];
+			} else {
+				pendingJoins[roomId] = remaining;
+			}
+		}
 	});
 
 	//handling file actions

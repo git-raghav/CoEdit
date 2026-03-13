@@ -37,6 +37,8 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
         setCurrentUser,
         drawingData,
         setDrawingData,
+        setIsOwner,
+        setPendingUsers,
     } = useAppContext()
     const socket: Socket = useMemo(
         () =>
@@ -72,11 +74,14 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
             toast.dismiss()
             setStatus(USER_STATUS.JOINED)
 
+            // First user in the room is treated as the owner
+            setIsOwner(users.length === 1)
+
             if (users.length > 1) {
                 toast.loading("Syncing data, please wait...")
             }
         },
-        [setCurrentUser, setStatus, setUsers],
+        [setCurrentUser, setIsOwner, setStatus, setUsers],
     )
 
     const handleUserLeft = useCallback(
@@ -101,11 +106,42 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
         [setDrawingData],
     )
 
+    const handleJoinPending = useCallback(
+        ({
+            socketId,
+            username,
+            roomId,
+        }: {
+            socketId: SocketId
+            username: string
+            roomId: string
+        }) => {
+            setPendingUsers((prev) => [
+                ...prev,
+                { socketId, username, roomId },
+            ])
+            toast.dismiss()
+            toast.success(`Join request from ${username}`)
+        },
+        [setPendingUsers],
+    )
+
+    const handleJoinRejected = useCallback(
+        () => {
+            toast.dismiss()
+            setStatus(USER_STATUS.INITIAL)
+            toast.error("Your join request was rejected by the room owner.")
+        },
+        [setStatus],
+    )
+
     useEffect(() => {
         socket.on("connect_error", handleError)
         socket.on("connect_failed", handleError)
         socket.on(SocketEvent.USERNAME_EXISTS, handleUsernameExist)
         socket.on(SocketEvent.JOIN_ACCEPTED, handleJoiningAccept)
+        socket.on(SocketEvent.JOIN_PENDING, handleJoinPending)
+        socket.on(SocketEvent.JOIN_REJECTED, handleJoinRejected)
         socket.on(SocketEvent.USER_DISCONNECTED, handleUserLeft)
         socket.on(SocketEvent.REQUEST_DRAWING, handleRequestDrawing)
         socket.on(SocketEvent.SYNC_DRAWING, handleDrawingSync)
@@ -115,6 +151,8 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
             socket.off("connect_failed")
             socket.off(SocketEvent.USERNAME_EXISTS)
             socket.off(SocketEvent.JOIN_ACCEPTED)
+            socket.off(SocketEvent.JOIN_PENDING)
+            socket.off(SocketEvent.JOIN_REJECTED)
             socket.off(SocketEvent.USER_DISCONNECTED)
             socket.off(SocketEvent.REQUEST_DRAWING)
             socket.off(SocketEvent.SYNC_DRAWING)
@@ -123,6 +161,8 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
         handleDrawingSync,
         handleError,
         handleJoiningAccept,
+        handleJoinPending,
+        handleJoinRejected,
         handleRequestDrawing,
         handleUserLeft,
         handleUsernameExist,

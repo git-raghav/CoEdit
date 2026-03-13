@@ -8,6 +8,12 @@ enum ACTIVITY_STATE {
     DRAWING = "drawing",
 }
 
+interface PendingUser {
+    socketId: string
+    username: string
+    roomId: string
+}
+
 interface AppContext {
     users: RemoteUser[]
     setUsers: (
@@ -21,6 +27,12 @@ interface AppContext {
     setActivityState: (state: ACTIVITY_STATE) => void
     drawingData: DrawingData
     setDrawingData: (data: DrawingData) => void
+    isOwner: boolean
+    setIsOwner: (isOwner: boolean) => void
+    pendingUsers: PendingUser[]
+    setPendingUsers: (
+        users: PendingUser[] | ((users: PendingUser[]) => PendingUser[]),
+    ) => void
 }
 
 export { ACTIVITY_STATE }
