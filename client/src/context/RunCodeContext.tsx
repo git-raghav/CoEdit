@@ -83,12 +83,21 @@ const RunCodeContextProvider = ({ children }: { children: ReactNode }) => {
                 version,
                 files: [{ name: activeFile.name, content: activeFile.content }],
                 stdin: input,
+                compile_timeout: 20000,
+                run_timeout: 10000,
+                compile_cpu_time: 20000,
+                run_cpu_time: 10000
             })
             console.log(response.data)
-            if (response.data.run.stderr) {
-                setOutput(response.data.run.stderr)
+            const runResult = response.data.run
+            if (runResult.stderr) {
+                setOutput(runResult.stderr)
+            } else if (runResult.stdout) {
+                setOutput(runResult.stdout)
+            } else if (runResult.message) {
+                setOutput(runResult.message)
             } else {
-                setOutput(response.data.run.stdout)
+                setOutput("Execution completed with no output.")
             }
             setIsRunning(false)
             toast.dismiss()
