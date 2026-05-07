@@ -356,9 +356,11 @@ function FileContextProvider({ children }: { children: ReactNode }) {
 
             if (!parentDirId) parentDirId = fileStructure.id
 
-            const parentDir = findParentDirectory(fileStructure, parentDirId)
+            const parentDir =
+                findParentDirectory(fileStructure, parentDirId) ||
+                fileStructure
+                
             if (!parentDir) throw new Error("Parent directory not found")
-
             let newFile: FileSystemItem
 
             if (typeof file === "string") {
@@ -670,6 +672,23 @@ function FileContextProvider({ children }: { children: ReactNode }) {
         [],
     )
 
+    const handleRequestSync = useCallback(
+        ({ socketId }: { socketId: Id }) => {
+            socket.emit(SocketEvent.SYNC_FILE_STRUCTURE, {
+                fileStructure,
+                openFiles,
+                activeFile,
+                socketId,
+            })
+
+            socket.emit(SocketEvent.SYNC_DRAWING, {
+                drawingData,
+                socketId,
+            })
+        },
+        [activeFile, drawingData, fileStructure, openFiles, socket],
+    )
+
     const handleDirCreated = useCallback(
         ({
             parentDirId,
@@ -743,7 +762,9 @@ function FileContextProvider({ children }: { children: ReactNode }) {
     )
 
     useEffect(() => {
-        socket.once(SocketEvent.SYNC_FILE_STRUCTURE, handleFileStructureSync)
+        // Listen continuously so sync works on rejoin/refresh too
+        socket.on(SocketEvent.SYNC_FILE_STRUCTURE, handleFileStructureSync)
+        socket.on(SocketEvent.REQUEST_SYNC, handleRequestSync)
         socket.on(SocketEvent.USER_JOINED, handleUserJoined)
         socket.on(SocketEvent.DIRECTORY_CREATED, handleDirCreated)
         socket.on(SocketEvent.DIRECTORY_UPDATED, handleDirUpdated)
@@ -755,6 +776,8 @@ function FileContextProvider({ children }: { children: ReactNode }) {
         socket.on(SocketEvent.FILE_DELETED, handleFileDeleted)
 
         return () => {
+            socket.off(SocketEvent.SYNC_FILE_STRUCTURE)
+            socket.off(SocketEvent.REQUEST_SYNC)
             socket.off(SocketEvent.USER_JOINED)
             socket.off(SocketEvent.DIRECTORY_CREATED)
             socket.off(SocketEvent.DIRECTORY_UPDATED)
@@ -776,6 +799,7 @@ function FileContextProvider({ children }: { children: ReactNode }) {
         handleFileStructureSync,
         handleFileUpdated,
         handleUserJoined,
+        handleRequestSync,
         socket,
     ])
 

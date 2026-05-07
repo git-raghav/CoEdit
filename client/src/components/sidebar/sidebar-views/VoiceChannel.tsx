@@ -21,7 +21,6 @@ const STUN_SERVERS: RTCConfiguration = {
 
 const VoiceChannel = () => {
     const [isMuted, setIsMuted] = useState(false)
-    const [isSpeaking, setIsSpeaking] = useState(false)
     const [voiceUsers, setVoiceUsers] = useState<VoiceUser[]>([])
     const [isInVoice, setIsInVoice] = useState(false)
     const localStreamRef = useRef<MediaStream | null>(null)
@@ -252,6 +251,12 @@ const VoiceChannel = () => {
 
     const joinVoiceChannel = async () => {
         try {
+            if (!navigator?.mediaDevices?.getUserMedia) {
+                console.error(
+                    "Microphone API is unavailable. This usually requires HTTPS (or localhost).",
+                )
+                return
+            }
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: true,
             })
@@ -300,7 +305,6 @@ const VoiceChannel = () => {
 
         setIsInVoice(false)
         setIsMuted(false)
-        setIsSpeaking(false)
         setVoiceUsers((prev) =>
             prev.filter((u) => u.socketId !== socket.id),
         )
@@ -374,7 +378,7 @@ const VoiceChannel = () => {
                             </span>
                         )}
                         {/* Hidden audio element for remote streams */}
-                        {user.stream && (
+                        {user.stream && user.socketId !== (socket.id as SocketId) && (
                             <audio
                                 autoPlay
                                 ref={(audio) => {

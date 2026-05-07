@@ -27,7 +27,8 @@ export const useSocket = (): SocketContextType => {
     return context
 }
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000"
+const BACKEND_URL = "https://coderoom.site"
+// const BACKEND_URL = "http://localhost:3000"
 
 const SocketProvider = ({ children }: { children: ReactNode }) => {
     const {
@@ -68,17 +69,27 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
     }, [setStatus])
 
     const handleJoiningAccept = useCallback(
-        ({ user, users }: { user: User; users: RemoteUser[] }) => {
+        ({
+            user,
+            users,
+            ownerSocketId,
+        }: {
+            user: User
+            users: RemoteUser[]
+            ownerSocketId?: SocketId
+        }) => {
             setCurrentUser(user)
             setUsers(users)
             toast.dismiss()
             setStatus(USER_STATUS.JOINED)
 
-            // First user in the room is treated as the owner
-            setIsOwner(users.length === 1)
+            // Server-authoritative ownership (fixes rejoin/refresh edge cases)
+            setIsOwner(ownerSocketId === socket.id)
 
             if (users.length > 1) {
                 toast.loading("Syncing data, please wait...")
+                // Deterministic sync request (prevents stuck loading toast)
+                socket.emit(SocketEvent.REQUEST_SYNC)
             }
         },
         [setCurrentUser, setIsOwner, setStatus, setUsers],
@@ -116,6 +127,8 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
             username: string
             roomId: string
         }) => {
+            // Always store pending requests; if ownership flips shortly after,
+            // the new owner will still see admit controls.
             setPendingUsers((prev) => [
                 ...prev,
                 { socketId, username, roomId },
@@ -124,6 +137,15 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
             toast.success(`Join request from ${username}`)
         },
         [setPendingUsers],
+    )
+
+    const handleOwnerChanged = useCallback(
+        ({ ownerSocketId }: { roomId: string; ownerSocketId: SocketId }) => {
+            const nowOwner = ownerSocketId === socket.id
+            setIsOwner(nowOwner)
+            // Keep pending requests; UI controls depend on isOwner.
+        },
+        [setIsOwner, setPendingUsers, socket.id],
     )
 
     const handleJoinRejected = useCallback(
@@ -135,13 +157,20 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
         [setStatus],
     )
 
+    const handleJoinWaiting = useCallback(() => {
+        toast.dismiss()
+        toast.loading("Waiting for room owner approval...")
+    }, [])
+
     useEffect(() => {
         socket.on("connect_error", handleError)
         socket.on("connect_failed", handleError)
         socket.on(SocketEvent.USERNAME_EXISTS, handleUsernameExist)
         socket.on(SocketEvent.JOIN_ACCEPTED, handleJoiningAccept)
+        socket.on(SocketEvent.JOIN_WAITING, handleJoinWaiting)
         socket.on(SocketEvent.JOIN_PENDING, handleJoinPending)
         socket.on(SocketEvent.JOIN_REJECTED, handleJoinRejected)
+        socket.on(SocketEvent.OWNER_CHANGED, handleOwnerChanged)
         socket.on(SocketEvent.USER_DISCONNECTED, handleUserLeft)
         socket.on(SocketEvent.REQUEST_DRAWING, handleRequestDrawing)
         socket.on(SocketEvent.SYNC_DRAWING, handleDrawingSync)
@@ -151,8 +180,10 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
             socket.off("connect_failed")
             socket.off(SocketEvent.USERNAME_EXISTS)
             socket.off(SocketEvent.JOIN_ACCEPTED)
+            socket.off(SocketEvent.JOIN_WAITING)
             socket.off(SocketEvent.JOIN_PENDING)
             socket.off(SocketEvent.JOIN_REJECTED)
+            socket.off(SocketEvent.OWNER_CHANGED)
             socket.off(SocketEvent.USER_DISCONNECTED)
             socket.off(SocketEvent.REQUEST_DRAWING)
             socket.off(SocketEvent.SYNC_DRAWING)
@@ -161,8 +192,10 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
         handleDrawingSync,
         handleError,
         handleJoiningAccept,
+        handleJoinWaiting,
         handleJoinPending,
         handleJoinRejected,
+        handleOwnerChanged,
         handleRequestDrawing,
         handleUserLeft,
         handleUsernameExist,

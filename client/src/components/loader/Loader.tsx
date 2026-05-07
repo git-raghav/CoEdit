@@ -5,7 +5,7 @@ const Loader = () => {
     <div className="loader JS_on">
       <span className="binary"></span>
       <span className="binary"></span>
-      <span className="getting-there">LOADING STUFF...</span>
+      <span className="getting-there">Initializing workspace...</span>
     </div>
   );
 };

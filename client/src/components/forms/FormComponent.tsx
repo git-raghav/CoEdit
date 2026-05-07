@@ -51,6 +51,16 @@ const FormComponent = () => {
         if (!validateForm()) return
         toast.loading("Joining room...")
         setStatus(USER_STATUS.ATTEMPTING_JOIN)
+        if (!socket.connected) {
+            socket.connect()
+            // If connect happens immediately, don't miss it.
+            if (socket.connected) {
+                socket.emit(SocketEvent.JOIN_REQUEST, currentUser)
+                return
+            }
+            socket.once("connect", () => socket.emit(SocketEvent.JOIN_REQUEST, currentUser))
+            return
+        }
         socket.emit(SocketEvent.JOIN_REQUEST, currentUser)
     }
 
@@ -65,33 +75,17 @@ const FormComponent = () => {
     }, [currentUser, location.state?.roomId, setCurrentUser])
 
     useEffect(() => {
-        if (status === USER_STATUS.DISCONNECTED && !socket.connected) {
-            socket.connect()
-            return
-        }
-
-        const isRedirect = sessionStorage.getItem("redirect") || false
-
-        if (status === USER_STATUS.JOINED && !isRedirect) {
+        if (status === USER_STATUS.JOINED) {
             const username = currentUser.username
-            sessionStorage.setItem("redirect", "true")
             navigate(`/editor/${currentUser.roomId}`, {
                 state: {
                     username,
                 },
             })
-        } else if (status === USER_STATUS.JOINED && isRedirect) {
-            sessionStorage.removeItem("redirect")
-            setStatus(USER_STATUS.DISCONNECTED)
-            socket.disconnect()
-            socket.connect()
         }
     }, [
         currentUser,
-        location.state?.redirect,
         navigate,
-        setStatus,
-        socket,
         status,
     ])
 

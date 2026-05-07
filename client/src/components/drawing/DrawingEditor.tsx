@@ -2,7 +2,7 @@ import { useAppContext } from "@/context/AppContext"
 import { useSocket } from "@/context/SocketContext"
 import useWindowDimensions from "@/hooks/useWindowDimensions"
 import { SocketEvent } from "@/types/socket"
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { HistoryEntry, RecordsDiff, TLRecord, Tldraw, useEditor } from "tldraw"
 
 function DrawingEditor() {
@@ -24,6 +24,7 @@ function ReachEditor() {
     const editor = useEditor()
     const { drawingData, setDrawingData } = useAppContext()
     const { socket } = useSocket()
+    const hasLoadedInitialSnapshot = useRef(false)
 
     const handleChangeEvent = useCallback(
         (change: HistoryEntry<TLRecord>) => {
@@ -59,11 +60,17 @@ function ReachEditor() {
     )
 
     useEffect(() => {
-        // Load the drawing data from the context
-        if (drawingData && Object.keys(drawingData).length > 0) {
-            editor.store.loadSnapshot(drawingData)
+        // Load the initial drawing snapshot once after sync.
+        if (
+            hasLoadedInitialSnapshot.current ||
+            !drawingData ||
+            Object.keys(drawingData).length === 0
+        ) {
+            return
         }
-    }, [])
+        editor.store.loadSnapshot(drawingData)
+        hasLoadedInitialSnapshot.current = true
+    }, [drawingData, editor.store])
 
     useEffect(() => {
         const cleanupFunction = editor.store.listen(handleChangeEvent, {

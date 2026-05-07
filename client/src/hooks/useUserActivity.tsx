@@ -1,20 +1,21 @@
 import { useAppContext } from "@/context/AppContext"
 import { useSocket } from "@/context/SocketContext"
 import { SocketEvent, SocketId } from "@/types/socket"
-import { RemoteUser, USER_CONNECTION_STATUS } from "@/types/user"
+import { RemoteUser, USER_CONNECTION_STATUS, USER_STATUS } from "@/types/user"
 import { useCallback, useEffect } from "react"
 
 function useUserActivity() {
-    const { setUsers } = useAppContext()
+    const { setUsers, status } = useAppContext()
     const { socket } = useSocket()
 
     const handleUserVisibilityChange = useCallback(() => {
+        if (status !== USER_STATUS.JOINED) return
         if (document.visibilityState === "visible")
             socket.emit(SocketEvent.USER_ONLINE, { socketId: socket.id })
         else if (document.visibilityState === "hidden") {
             socket.emit(SocketEvent.USER_OFFLINE, { socketId: socket.id })
         }
-    }, [socket])
+    }, [socket, status])
 
     const handleUserOnline = useCallback(
         ({ socketId }: { socketId: SocketId }) => {

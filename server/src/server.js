@@ -40,23 +40,45 @@ function getUsersInRoom(roomId) {
 	return userSocketMap.filter((user) => user.roomId === roomId);
 }
 
+function getValidOwnerSocketId(roomId) {
+	const existingUsers = getUsersInRoom(roomId);
+	const currentOwnerSocketId = roomOwners[roomId];
+	const isCurrentOwnerOnline = existingUsers.some(
+		(user) => user.socketId === currentOwnerSocketId,
+	);
+
+	if (isCurrentOwnerOnline) {
+		return currentOwnerSocketId;
+	}
+
+	const nextOwnerSocketId = existingUsers[0] ? existingUsers[0].socketId : null;
+	if (nextOwnerSocketId) {
+		const prevOwnerSocketId = roomOwners[roomId];
+		roomOwners[roomId] = nextOwnerSocketId;
+		if (prevOwnerSocketId && prevOwnerSocketId !== nextOwnerSocketId) {
+			io.to(roomId).emit(SocketEvent.OWNER_CHANGED, {
+				roomId,
+				ownerSocketId: nextOwnerSocketId,
+			});
+		}
+		return nextOwnerSocketId;
+	}
+
+	delete roomOwners[roomId];
+	return null;
+}
+
 // Function to get room id by socket id
 function getRoomId(socketId) {
 	const user = userSocketMap.find((user) => user.socketId === socketId);
-	if (!user) {
-		console.error("Room ID is undefined for socket ID:", socketId);
-		return null;
-	}
+	if (!user) return null;
 	return user.roomId;
 }
 
 // Function to get user by socket id
 function getUserBySocketId(socketId) {
 	const user = userSocketMap.find((user) => user.socketId === socketId);
-	if (!user) {
-		console.error("User not found for socket ID:", socketId);
-		return null;
-	}
+	if (!user) return null;
 	return user;
 }
 
@@ -66,11 +88,20 @@ io.on("connection", (socket) => {
 		const existingUsers = getUsersInRoom(roomId);
 
 		// Check if username already exists among active users in the room
-		const isUsernameExist = existingUsers.some((u) => u.username === username);
+		const existingUserWithSameName = existingUsers.find(
+			(u) => u.username === username,
+		);
 
-		if (isUsernameExist) {
-			io.to(socket.id).emit(SocketEvent.USERNAME_EXISTS);
-			return;
+		// Allow fast refresh/rejoin: if the old socket is gone, replace it.
+		// (Security trade-off is acceptable for this project.)
+		if (existingUserWithSameName) {
+			const oldSocketId = existingUserWithSameName.socketId;
+			const oldSocket = io.sockets.sockets.get(oldSocketId);
+			if (oldSocket) {
+				// Forcefully disconnect the old socket to free the username
+				oldSocket.disconnect(true);
+			}
+			userSocketMap = userSocketMap.filter((u) => u.socketId !== oldSocketId);
 		}
 
 		// If this is the first user in the room, auto-accept and set as owner
@@ -91,7 +122,11 @@ io.on("connection", (socket) => {
 			socket.broadcast.to(roomId).emit(SocketEvent.USER_JOINED, { user });
 
 			const users = getUsersInRoom(roomId);
-			io.to(socket.id).emit(SocketEvent.JOIN_ACCEPTED, { user, users });
+			io.to(socket.id).emit(SocketEvent.JOIN_ACCEPTED, {
+				user,
+				users,
+				ownerSocketId: roomOwners[roomId],
+			});
 			return;
 		}
 
@@ -101,14 +136,10 @@ io.on("connection", (socket) => {
 		}
 
 		// Prevent duplicate pending requests with the same username in this room
-		const isUsernamePending = pendingJoins[roomId].some(
-			(pending) => pending.username === username,
+		// If there is a previous pending request for this username, replace it (refresh/retry)
+		pendingJoins[roomId] = pendingJoins[roomId].filter(
+			(pending) => pending.username !== username,
 		);
-
-		if (isUsernamePending) {
-			io.to(socket.id).emit(SocketEvent.USERNAME_EXISTS);
-			return;
-		}
 
 		const pendingUser = {
 			username,
@@ -118,42 +149,49 @@ io.on("connection", (socket) => {
 
 		pendingJoins[roomId].push(pendingUser);
 
-		const ownerSocketId = roomOwners[roomId] || (existingUsers[0] && existingUsers[0].socketId);
+		const ownerSocketId = getValidOwnerSocketId(roomId);
 		if (ownerSocketId) {
-			roomOwners[roomId] = ownerSocketId;
 			io.to(ownerSocketId).emit(SocketEvent.JOIN_PENDING, {
 				socketId: pendingUser.socketId,
 				username: pendingUser.username,
 				roomId: pendingUser.roomId,
 			});
 		}
+
+		io.to(pendingUser.socketId).emit(SocketEvent.JOIN_WAITING, {
+			roomId: pendingUser.roomId,
+		});
 	});
 
 	socket.on(SocketEvent.JOIN_APPROVE, ({ socketId }) => {
 		// Find the pending user and associated room
 		let targetRoomId = null;
-		let pendingUser = null;
+		let pendingUserIndex = -1;
 
 		for (const roomId of Object.keys(pendingJoins)) {
-			const index = pendingJoins[roomId].findIndex(
-				(pending) => pending.socketId === socketId,
-			);
+			const index = pendingJoins[roomId].findIndex((pending) => pending.socketId === socketId);
 			if (index !== -1) {
 				targetRoomId = roomId;
-				[pendingUser] = pendingJoins[roomId].splice(index, 1);
-				if (pendingJoins[roomId].length === 0) {
-					delete pendingJoins[roomId];
-				}
+				pendingUserIndex = index;
 				break;
 			}
 		}
 
-		if (!pendingUser || !targetRoomId) {
+		if (!targetRoomId || pendingUserIndex === -1) {
 			return;
 		}
 
 		// Only the room owner can approve
-		if (roomOwners[targetRoomId] !== socket.id) {
+		const ownerSocketId = getValidOwnerSocketId(targetRoomId);
+		if (ownerSocketId !== socket.id) {
+			return;
+		}
+
+		const [pendingUser] = pendingJoins[targetRoomId].splice(pendingUserIndex, 1);
+		if (pendingJoins[targetRoomId].length === 0) {
+			delete pendingJoins[targetRoomId];
+		}
+		if (!pendingUser) {
 			return;
 		}
 
@@ -177,34 +215,42 @@ io.on("connection", (socket) => {
 		targetSocket.broadcast.to(targetRoomId).emit(SocketEvent.USER_JOINED, { user });
 
 		const users = getUsersInRoom(targetRoomId);
-		io.to(pendingUser.socketId).emit(SocketEvent.JOIN_ACCEPTED, { user, users });
+		io.to(pendingUser.socketId).emit(SocketEvent.JOIN_ACCEPTED, {
+			user,
+			users,
+			ownerSocketId: getValidOwnerSocketId(targetRoomId),
+		});
 	});
 
 	socket.on(SocketEvent.JOIN_REJECT, ({ socketId }) => {
 		// Find the pending user and associated room
 		let targetRoomId = null;
-		let pendingUser = null;
+		let pendingUserIndex = -1;
 
 		for (const roomId of Object.keys(pendingJoins)) {
-			const index = pendingJoins[roomId].findIndex(
-				(pending) => pending.socketId === socketId,
-			);
+			const index = pendingJoins[roomId].findIndex((pending) => pending.socketId === socketId);
 			if (index !== -1) {
 				targetRoomId = roomId;
-				[pendingUser] = pendingJoins[roomId].splice(index, 1);
-				if (pendingJoins[roomId].length === 0) {
-					delete pendingJoins[roomId];
-				}
+				pendingUserIndex = index;
 				break;
 			}
 		}
 
-		if (!pendingUser || !targetRoomId) {
+		if (!targetRoomId || pendingUserIndex === -1) {
 			return;
 		}
 
 		// Only the room owner can reject
-		if (roomOwners[targetRoomId] !== socket.id) {
+		const ownerSocketId = getValidOwnerSocketId(targetRoomId);
+		if (ownerSocketId !== socket.id) {
+			return;
+		}
+
+		const [pendingUser] = pendingJoins[targetRoomId].splice(pendingUserIndex, 1);
+		if (pendingJoins[targetRoomId].length === 0) {
+			delete pendingJoins[targetRoomId];
+		}
+		if (!pendingUser) {
 			return;
 		}
 
@@ -220,19 +266,28 @@ io.on("connection", (socket) => {
 			socket.broadcast.to(user.roomId).emit(SocketEvent.USER_DISCONNECTED, { user });
 			userSocketMap = userSocketMap.filter((u) => u.socketId !== socket.id);
 			socket.leave(user.roomId);
+			getValidOwnerSocketId(user.roomId);
 		}
 
 		// Clean up any pending join requests for this socket
 		for (const roomId of Object.keys(pendingJoins)) {
-			const remaining = pendingJoins[roomId].filter(
-				(pending) => pending.socketId !== socket.id,
-			);
+			const remaining = pendingJoins[roomId].filter((pending) => pending.socketId !== socket.id);
 			if (remaining.length === 0) {
 				delete pendingJoins[roomId];
 			} else {
 				pendingJoins[roomId] = remaining;
 			}
 		}
+	});
+
+	// Request a deterministic sync from the room owner (files + drawing)
+	socket.on(SocketEvent.REQUEST_SYNC, () => {
+		const roomId = getRoomId(socket.id);
+		if (!roomId) return;
+		const ownerSocketId = getValidOwnerSocketId(roomId);
+		if (!ownerSocketId) return;
+		if (ownerSocketId === socket.id) return;
+		io.to(ownerSocketId).emit(SocketEvent.REQUEST_SYNC, { socketId: socket.id });
 	});
 
 	//handling file actions
@@ -261,7 +316,7 @@ io.on("connection", (socket) => {
 	["USER_OFFLINE", "USER_ONLINE"].forEach((event) => {
 		socket.on(SocketEvent[event], ({ socketId }) => {
 			userSocketMap = userSocketMap.map((user) =>
-				user.socketId === socketId ? { ...user, status: USER_CONNECTION_STATUS[event] } : user
+				user.socketId === socketId ? { ...user, status: USER_CONNECTION_STATUS[event] } : user,
 			);
 			const roomId = getRoomId(socketId);
 			if (!roomId) return;
@@ -306,7 +361,7 @@ io.on("connection", (socket) => {
 		if (!roomId) return;
 		socket.broadcast.to(roomId).emit(SocketEvent.DRAWING_UPDATE, { snapshot });
 	});
-    // Voice channel events (signaling + presence)
+	// Voice channel events (signaling + presence)
 	socket.on(SocketEvent.VOICE_JOIN, ({ username }) => {
 		const roomId = getRoomId(socket.id);
 		if (!roomId) return;
