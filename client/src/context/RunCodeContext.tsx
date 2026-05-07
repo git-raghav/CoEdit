@@ -10,6 +10,7 @@ import {
 } from "react"
 import toast from "react-hot-toast"
 import { useFileSystem } from "./FileContext"
+import { logger } from "@/utils/logger"
 
 const RunCodeContext = createContext<RunContextType | null>(null)
 
@@ -88,7 +89,12 @@ const RunCodeContextProvider = ({ children }: { children: ReactNode }) => {
                 compile_cpu_time: 20000,
                 run_cpu_time: 10000
             })
-            console.log(response.data)
+            logger.info("run", "execution completed", {
+                language,
+                version,
+                status: response.data?.run?.status,
+                wall_time: response.data?.run?.wall_time,
+            })
             const runResult = response.data.run
             if (runResult.stderr) {
                 setOutput(runResult.stderr)
@@ -102,8 +108,7 @@ const RunCodeContextProvider = ({ children }: { children: ReactNode }) => {
             setIsRunning(false)
             toast.dismiss()
         } catch (error: any) {
-            console.error(error.response.data)
-            console.error(error.response.data.error)
+            logger.error("run", "execution failed", error?.response?.data || error)
             setIsRunning(false)
             toast.dismiss()
             toast.error("Failed to run the code")

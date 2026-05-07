@@ -26,6 +26,15 @@ body {
     --sb-size: 6px;
 }
 
+html,
+body,
+#root {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    min-height: 100%;
+}
+
 ::-webkit-scrollbar {
     width: var(--sb-size);
     height: var(--sb-size);

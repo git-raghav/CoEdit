@@ -1,5 +1,5 @@
 import { useAppContext } from "@/context/AppContext"
-import { RemoteUser, USER_CONNECTION_STATUS } from "@/types/user"
+import { RemoteUser } from "@/types/user"
 import Avatar from "react-avatar"
 
 function Users() {
@@ -17,8 +17,8 @@ function Users() {
 }
 
 const User = ({ user }: { user: RemoteUser }) => {
-    const { username, status } = user
-    const title = `${username} - ${status === USER_CONNECTION_STATUS.ONLINE ? "online" : "offline"}`
+    const { username } = user
+    const title = username
 
     return (
         <div
@@ -29,13 +29,6 @@ const User = ({ user }: { user: RemoteUser }) => {
             <p className="line-clamp-2 max-w-full text-ellipsis break-words text-sm">
                 {username}
             </p>
-            <div
-                className={`absolute right-4 top-0 h-3 w-3 rounded-full ${
-                    status === USER_CONNECTION_STATUS.ONLINE
-                        ? "bg-green-500"
-                        : "bg-danger"
-                }`}
-            ></div>
         </div>
     )
 }

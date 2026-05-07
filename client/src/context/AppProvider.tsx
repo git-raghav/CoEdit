@@ -7,6 +7,7 @@ import { SettingContextProvider } from "./SettingContext.jsx"
 import { SocketProvider } from "./SocketContext.jsx"
 import { ViewContextProvider } from "./ViewContext.js"
 import { CopilotContextProvider } from "./CopilotContext.js"
+import { VoiceContextProvider } from "./VoiceContext"
 
 function AppProvider({ children }: { children: ReactNode }) {
     return (
@@ -16,11 +17,13 @@ function AppProvider({ children }: { children: ReactNode }) {
                     <ViewContextProvider>
                         <FileContextProvider>
                             <CopilotContextProvider>
-                                <RunCodeContextProvider>
-                                    <ChatContextProvider>
-                                        {children}
-                                    </ChatContextProvider>
-                                </RunCodeContextProvider>
+                                <VoiceContextProvider>
+                                    <RunCodeContextProvider>
+                                        <ChatContextProvider>
+                                            {children}
+                                        </ChatContextProvider>
+                                    </RunCodeContextProvider>
+                                </VoiceContextProvider>
                             </CopilotContextProvider>
                         </FileContextProvider>
                     </ViewContextProvider>

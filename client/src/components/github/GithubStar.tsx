@@ -4,7 +4,7 @@ export default function GitStarButton() {
     return (
         <button
             onClick={() =>
-                window.open("https://github.com/git-raghav/CoEdit.git", "_blank")
+                window.open("https://github.com/git-raghav/CodeRoom.git", "_blank")
             }
             className="focus-visible:ring-ring group relative flex h-9 w-full max-w-52 items-center justify-center gap-2 overflow-hidden whitespace-pre rounded-md bg-black px-4 py-2 text-sm font-medium text-white shadow transition-all duration-300 ease-out hover:bg-black/90 hover:ring-2 hover:ring-black hover:ring-offset-2 focus-visible:outline-none focus-visible:ring-1 disabled:pointer-events-none disabled:opacity-50 md:flex"
         >
@@ -33,9 +33,9 @@ export default function GitStarButton() {
                         fill-rule="evenodd"
                     ></path>
                 </svg>
-                <span className="font-display inline-block font-medium tabular-nums tracking-wider text-white">
+                {/* <span className="font-display inline-block font-medium tabular-nums tracking-wider text-white">
                     2
-                </span>
+                </span> */}
             </div>
         </button>
     )

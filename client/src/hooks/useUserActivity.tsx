@@ -3,6 +3,7 @@ import { useSocket } from "@/context/SocketContext"
 import { SocketEvent, SocketId } from "@/types/socket"
 import { RemoteUser, USER_CONNECTION_STATUS, USER_STATUS } from "@/types/user"
 import { useCallback, useEffect } from "react"
+import { logger } from "@/utils/logger"
 
 function useUserActivity() {
     const { setUsers, status } = useAppContext()
@@ -10,11 +11,14 @@ function useUserActivity() {
 
     const handleUserVisibilityChange = useCallback(() => {
         if (status !== USER_STATUS.JOINED) return
-        if (document.visibilityState === "visible")
+        if (document.visibilityState === "visible") {
             socket.emit(SocketEvent.USER_ONLINE, { socketId: socket.id })
-        else if (document.visibilityState === "hidden") {
-            socket.emit(SocketEvent.USER_OFFLINE, { socketId: socket.id })
+            logger.debug("presence", "visibility online emit", {
+                socketId: socket.id,
+            })
         }
+        // Intentionally avoid emitting USER_OFFLINE on tab hidden.
+        // Hidden tab != disconnected user, and this caused collaboration instability.
     }, [socket, status])
 
     const handleUserOnline = useCallback(

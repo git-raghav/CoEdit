@@ -5,7 +5,7 @@ function Footer() {
                 Built by{" "}
                 <a
                     href="https://git-raghav.github.io/Portfolio/"
-                    className="text-statuspurple underline underline-offset-1"
+                    className="text-statuspurple"
                     target="_blank"
                 >
                     Team

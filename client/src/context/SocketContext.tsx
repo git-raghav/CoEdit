@@ -16,6 +16,7 @@ import {
 import { toast } from "react-hot-toast"
 import { Socket, io } from "socket.io-client"
 import { useAppContext } from "./AppContext"
+import { logger } from "@/utils/logger"
 
 const SocketContext = createContext<SocketContextType | null>(null)
 
@@ -40,6 +41,8 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
         setDrawingData,
         setIsOwner,
         setPendingUsers,
+        currentUser,
+        status,
     } = useAppContext()
     const socket: Socket = useMemo(
         () =>
@@ -52,7 +55,7 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
     const handleError = useCallback(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (err: any) => {
-            console.log("socket error", err)
+            logger.error("socket", "socket error", err)
             setStatus(USER_STATUS.CONNECTION_FAILED)
             toast.dismiss()
             toast.error("Failed to connect to the server")
@@ -82,6 +85,12 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
             setUsers(users)
             toast.dismiss()
             setStatus(USER_STATUS.JOINED)
+            logger.info("socket", "join accepted", {
+                roomId: user.roomId,
+                username: user.username,
+                ownerSocketId,
+                selfSocketId: socket.id,
+            })
 
             // Server-authoritative ownership (fixes rejoin/refresh edge cases)
             setIsOwner(ownerSocketId === socket.id)
@@ -144,8 +153,13 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
             const nowOwner = ownerSocketId === socket.id
             setIsOwner(nowOwner)
             // Keep pending requests; UI controls depend on isOwner.
+            logger.info("socket", "owner changed", {
+                ownerSocketId,
+                selfSocketId: socket.id,
+                nowOwner,
+            })
         },
-        [setIsOwner, setPendingUsers, socket.id],
+        [setIsOwner, socket.id],
     )
 
     const handleJoinRejected = useCallback(
@@ -163,6 +177,28 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
     }, [])
 
     useEffect(() => {
+        const handleConnect = () => {
+            logger.info("socket", "connected", { socketId: socket.id })
+            // Recover collaboration after tab/network reconnects
+            if (
+                status === USER_STATUS.JOINED &&
+                currentUser.username &&
+                currentUser.roomId
+            ) {
+                socket.emit(SocketEvent.JOIN_REQUEST, currentUser)
+                logger.info("socket", "rejoin requested after reconnect", {
+                    roomId: currentUser.roomId,
+                    username: currentUser.username,
+                })
+            }
+        }
+
+        const handleDisconnect = (reason: string) => {
+            logger.warn("socket", "disconnected", { reason })
+        }
+
+        socket.on("connect", handleConnect)
+        socket.on("disconnect", handleDisconnect)
         socket.on("connect_error", handleError)
         socket.on("connect_failed", handleError)
         socket.on(SocketEvent.USERNAME_EXISTS, handleUsernameExist)
@@ -176,6 +212,8 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
         socket.on(SocketEvent.SYNC_DRAWING, handleDrawingSync)
 
         return () => {
+            socket.off("connect", handleConnect)
+            socket.off("disconnect", handleDisconnect)
             socket.off("connect_error")
             socket.off("connect_failed")
             socket.off(SocketEvent.USERNAME_EXISTS)
@@ -199,6 +237,8 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
         handleRequestDrawing,
         handleUserLeft,
         handleUsernameExist,
+        currentUser,
+        status,
         setUsers,
         socket,
     ])
