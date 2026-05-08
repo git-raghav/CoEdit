@@ -1,4 +1,5 @@
 import axiosInstance from "@/api/pistonApi"
+import lexYaccApi from "@/api/lexYaccApi"
 import { Language, RunContext as RunContextType } from "@/types/run"
 import langMap from "lang-map"
 import {
@@ -35,6 +36,10 @@ const RunCodeContextProvider = ({ children }: { children: ReactNode }) => {
         version: "",
         aliases: [],
     })
+    const [lexCode, setLexCode] = useState<string>("")
+    const [yaccCode, setYaccCode] = useState<string>("")
+    const [lexYaccOutput, setLexYaccOutput] = useState<string>("")
+    const [isLexYaccRunning, setIsLexYaccRunning] = useState<boolean>(false)
 
     useEffect(() => {
         const fetchSupportedLanguages = async () => {
@@ -115,6 +120,51 @@ const RunCodeContextProvider = ({ children }: { children: ReactNode }) => {
         }
     }
 
+    const runLexYaccCode = async () => {
+        try {
+            if (!lexCode.trim() || !yaccCode.trim()) {
+                return toast.error("Please provide both Lex and Yacc code")
+            }
+
+            toast.loading("Running Lex/Yacc code...")
+            setIsLexYaccRunning(true)
+
+            const response = await lexYaccApi.post("/execute", {
+                lexCode,
+                yaccCode,
+                stdin: input,
+            })
+
+            logger.info("lexyacc", "execution completed", {
+                exitCode: response.data?.exitCode,
+            })
+
+            const stdout = response.data?.stdout || ""
+            const stderr = response.data?.stderr || ""
+            const combined = [stdout, stderr].filter(Boolean).join("\n")
+
+            setLexYaccOutput(
+                combined || "Execution completed with no output.",
+            )
+            toast.dismiss()
+        } catch (error: any) {
+            logger.error("lexyacc", "execution failed", error?.response?.data || error)
+            const responseData = error?.response?.data
+            const detailedOutput = [
+                responseData?.error,
+                responseData?.stderr,
+                responseData?.stdout,
+            ]
+                .filter(Boolean)
+                .join("\n")
+            setLexYaccOutput(detailedOutput || "Failed to run Lex/Yacc code")
+            toast.dismiss()
+            toast.error("Failed to run Lex/Yacc code")
+        } finally {
+            setIsLexYaccRunning(false)
+        }
+    }
+
     return (
         <RunCodeContext.Provider
             value={{
@@ -125,6 +175,13 @@ const RunCodeContextProvider = ({ children }: { children: ReactNode }) => {
                 selectedLanguage,
                 setSelectedLanguage,
                 runCode,
+                lexCode,
+                setLexCode,
+                yaccCode,
+                setYaccCode,
+                lexYaccOutput,
+                isLexYaccRunning,
+                runLexYaccCode,
             }}
         >
             {children}

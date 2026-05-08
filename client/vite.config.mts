@@ -40,6 +40,11 @@ export default defineConfig({
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/piston/, "/api/v2"),
             },
+            "/lexyacc": {
+                target: "http://localhost:7000",
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/lexyacc/, ""),
+            },
         },
     },
 })

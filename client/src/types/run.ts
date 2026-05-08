@@ -12,6 +12,13 @@ interface RunContext {
     selectedLanguage: Language
     setSelectedLanguage: (language: Language) => void
     runCode: () => void
+    lexCode: string
+    setLexCode: (code: string) => void
+    yaccCode: string
+    setYaccCode: (code: string) => void
+    lexYaccOutput: string
+    isLexYaccRunning: boolean
+    runLexYaccCode: () => void
 }
 
 export { Language, RunContext }
